@@ -6,10 +6,14 @@ from zeroconf import ServiceInfo, Zeroconf, IPVersion
 import json
 import socket
 
-zeroconf = Zeroconf(ip_version=IPVersion.V4Only)
-desc = {"random_key": "1234", "answer": "42"}
-wsInfo = ServiceInfo('_http._tcp.local.',
-                     "hahabutt._http._tcp.local.",
+zeroconf = Zeroconf()
+desc = {"version": "3.0.1", 
+        "url": "http://192.168.128.1/openadr",
+        "role":"vtn",
+        "openapi":"http://192.168.128.1/openadr/openapi",
+        "OpenADR 3.0.1":None,}
+wsInfo = ServiceInfo('_openadr-http._tcp.local.',
+                     "My VTN Server._openadr-http._tcp.local.",
                      addresses=[socket.inet_aton("127.0.0.1")],
                      port=8080,
                      properties=desc)
