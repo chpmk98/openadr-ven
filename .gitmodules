@@ -1,0 +1,6 @@
+[submodule "openadr3-vtn-reference-implementation"]
+	path = openadr3-vtn-reference-implementation
+	url = https://github.com/oadr3-org/openadr3-vtn-reference-implementation.git
+[submodule "oadr30"]
+	path = oadr30
+	url = https://github.com/universaldevices/oadr30.git
