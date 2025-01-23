@@ -8,16 +8,23 @@ def on_service_found(zeroconf, service_type, name, state_change):
         info = zeroconf.get_service_info(service_type, name)
         if info:
             print("Service found:", name, "at", info.addresses[0], "port", info.port)
+            print(info)
+            print("This OpenADR object is a {}!".format(info.properties[b"role"]))
+            print("This OpenADR's base url is {}!".format(info.properties[b"base_url"]))
 
 if __name__ == '__main__':
     zeroconf = Zeroconf()
     service_type = "_openadr-http._tcp.local."  # Replace with the desired service type
     browser = ServiceBrowser(zeroconf, service_type, handlers=[on_service_found])
-
+        
     try:
-        input("Press Enter to exit...\n\n")
+        while True:
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        pass
     finally:
         zeroconf.close()
+
 
 ''' # My own attempt ha
 from zeroconf import ServiceInfo, Zeroconf
