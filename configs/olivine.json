@@ -2,20 +2,17 @@
     "default JSON": "./configs/default.json",
     "self-advertise": true,
     "OpenADR version": "3.0.1",
-    "program ID": "1",
     "DNS-SD": {
         "type": "_openadr-http._tcp",
         "name": "Default VEN",
         "port": 80,
         "txt": {
-            "appliance type": "Default Load"
+            "appliance type": "Olivine Load"
         }
     },
     "VTN": {
-        "addresses": [],
-        "port": 8000,
-        "base URL": "",
-        "use program ID": true
+        "full URL": "https://api.olivineinc.com/i/lbnl/v1/prices/cfh/SummerHDP/OpenADR3",
+        "use program ID": false
     },
     "VEN": {
         "client_id": "ven_client",

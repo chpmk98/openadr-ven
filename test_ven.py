@@ -20,6 +20,6 @@ class TestVEN(VEN):
         time.sleep(5)
 
 if __name__ == "__main__":
-    a_test_ven = TestVEN()
+    a_test_ven = TestVEN() #("./configs/olivine.json")
     a_test_ven.run()
     print("Done.")

@@ -7,12 +7,13 @@ import json
 import socket
 from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser, ServiceStateChange
 from oadr30.vtn import VTNOps
+from oadr30.price_server_client import PriceServerClient
 
 import time
 
 # An abstract VEN class.
 class VEN(ABC):
-    # A little helper function to get prioritization of config files.
+    # A helper function to get key-value items from config files.
     def __get_config(self, key, none_ok=False):
         if key in self.config:
             # Return the value in the main configuration file if it exists.
@@ -47,6 +48,10 @@ class VEN(ABC):
         self.zeroconf = None
         self.program_id = self.__get_config("program ID", none_ok=True)
 
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # mDNS self-advertisements 
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    
     # Advertises itself as a VEN over mDNS for local discovery.
     def _start_mDNS_advertisements(self):
         # Get the local IP address(es)
@@ -83,23 +88,51 @@ class VEN(ABC):
         # Do stuff based on the above method.
         self.zeroconf.unregister_service(self.wsInfo)
         self.zeroconf.close()
+
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # HTTP(S) connection to the VTN 
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     
     # Iterates through IP addresses for a particular VTN and attempts connection.
     def __attempt_connection(self, a_VTN):
-        # Assumes that a_VTN is a dictionary with "addresses":list, "port":int, "base URL":string.
-        for an_address in a_VTN["addresses"]:
+        # Some shenanigans because the VTN-RI does not have the same API as the Olivine servers do.
+        def ___connect_to_full_URL(a_full_URL, use_program_ID=True):
             try:
-                VTN_IP = socket.inet_ntoa(an_address)
-                VTN_full_url = "http://{}:{}{}".format(VTN_IP, a_VTN["port"], a_VTN["base URL"])
-                print("Connecting to {}...".format(VTN_full_url))
-                self.vtn = VTNOps(VTN_full_url, self.ven["client_id"], self.ven["client_secret"])
+                print("Connecting to {}...".format(a_full_URL))
+                if use_program_ID:
+                    # For the VTN-RI
+                    self.vtn = VTNOps(a_full_URL, self.ven["client_id"], self.ven["client_secret"])
+                else:
+                    # For the Olivine servers
+                    self.vtn = PriceServerClient(a_full_URL)
             except:
-                print("Could not connect to {}.".format(VTN_full_url))
+                print("Could not connect to {}.".format(a_full_URL))
                 self.vtn = None
+        
+        # By default, we assume the VTN has programs listed.
+        use_program_ID = a_VTN["use program ID"] if "use program ID" in a_VTN else True
+        # Checks if a_VTN contains a full URL. If so, establish a connection directly.
+        if "full URL" in a_VTN:
+            ___connect_to_full_URL(a_VTN["full URL"], use_program_ID)
+            # Exit if we successfully connected. Otherwise, continue attempting connections.
+            if self.vtn is not None:
+                print("Successfully connected to {}!".format(a_VTN["full URL"]))
+                return
+        # Otherwise, we assume that a_VTN is a dictionary with "addresses":list, "port":int, "base URL":string.
+        for an_address in a_VTN["addresses"]:
+            VTN_IP = socket.inet_ntoa(an_address)
+            VTN_full_url = "http://{}:{}{}".format(VTN_IP, a_VTN["port"], a_VTN["base URL"])
+            ___connect_to_full_URL(VTN_full_url, use_program_ID)
             # Exit the loop if we successfully connected. Otherwise, continue attempting connections.
             if self.vtn is not None:
                 print("Successfully connected to {}!".format(VTN_full_url))
                 return
+
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # Local VTN service discovery (DNS-SD) over mDNS 
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     
     # For browsing through local VTNs.
     def __on_service_found(self, zeroconf, service_type, name, state_change):
@@ -159,9 +192,18 @@ class VEN(ABC):
             while self.vtn is None:
                 time.sleep(0.1)
         # Once we get to this point, we should be successfully connected to a VTN, so we can just return.
-        
+
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # Program and Events selection
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    
     # Identifies the program we are planning to operate on, gets it from the VTN, and stores it in self.program.
     def _select_program(self):
+        # If we aren't using programs, then we just return.
+        if type(self.vtn) == PriceServerClient:
+            return
+        
         # If there's a desired program_id pre-defined, just grab it.
         if self.program_id is not None:
             self.program = self.vtn.get_program(program_id=self.program_id)
@@ -191,7 +233,15 @@ class VEN(ABC):
     # Gets the events for our desired program from the VTN and stores it in self.events.
     def _get_program_events(self):
         # Note: If this fails, self.events will be None.
-        self.events = self.vtn.get_events(program_id=self.program_id)
+        if type(self.vtn) == PriceServerClient:
+            self.events = self.vtn.getEvents()
+        else: # VTNOps
+            self.events = self.vtn.get_events(program_id=self.program_id)
+
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # Application-specific methods
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     
     # Operates on the event stored in self.events. 
     # This method will change, depending on the specific VEN.
@@ -204,6 +254,10 @@ class VEN(ABC):
     @abstractmethod
     def _wait(self):
         pass
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # Main operational loop
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     
     # Run everything as appropriate.
     def run(self):
