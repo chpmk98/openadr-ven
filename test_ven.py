@@ -12,7 +12,7 @@ class TestVEN(VEN):
         else:
             print("Found {} event(s):".format(self.events.num_events()))
             for an_event in self.events:
-                print("Program ID: {}, Event ID: {}, Time Series: \n{}\n\n".format(an_event.getProgramId(), an_event.getId(), an_event.getTimeSeriesValues()))
+                print("Program ID: {}, Event ID: {}, Intervals: \n{}\n\n".format(an_event.getProgramId(), an_event.getId(), an_event.getIntervals()))
     
     # Waits until an appropriate time to grab the next program.
     def _wait(self):
