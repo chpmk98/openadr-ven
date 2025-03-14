@@ -2,7 +2,7 @@
     "default JSON": "./configs/default.json",
     "self-advertise": true,
     "OpenADR version": "3.0.1",
-    "program ID": "1",
+    "program ID": "local",
     "DNS-SD": {
         "type": "_openadr-http._tcp",
         "name": "Default VEN",
