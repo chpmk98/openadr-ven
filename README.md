@@ -15,7 +15,7 @@ git submodule update --init --recursive
 
 ## Environment Setup
 ```
-conda create --name ven_env python=3
+conda create --name ven_env "python>=3.10"
 conda activate ven_env
 pip install -r requirements.txt
 ```
