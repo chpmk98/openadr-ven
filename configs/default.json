@@ -14,8 +14,7 @@
     "VTN": {
         "addresses": [],
         "port": 8000,
-        "base URL": "",
-        "use program ID": true
+        "base URL": ""
     },
     "VEN": {
         "client_id": "ven_client",
