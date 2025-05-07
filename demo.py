@@ -11,9 +11,9 @@ class DemoVEN(VEN):
     def __init__(self, json_path=None): 
         super().__init__(json_path)
         # Device-specific parameters. May need to be changed.
-        self.low_price = 0.2
-        self.high_price = 0.4
-        self.low_PWM = 0    # On a scale from 0 to 100
+        self.low_price = 0.10
+        self.high_price = 0.60
+        self.low_PWM = 5    # On a scale from 0 to 100
         self.high_PWM = 20  # On a scale from 0 to 100
         # For the PWM.
         self.pin = PWMOutputDevice(18)
@@ -56,18 +56,18 @@ class DemoVEN(VEN):
             # If the price is low, run the PWM high throttle.
             if cur_price <= self.low_price:
                 cur_PWM = self.high_PWM
-                cur_mode = "high"
-            # If the price is high, run the PWM low throttle.
-            elif cur_price >= self.high_price:
-                cur_PWM = self.low_PWM
-                cur_mode = "low"
+                cur_mode = "Fully On"
+            # If the price is too high, turn off the PWM device.
+            elif cur_price > self.high_price:
+                cur_PWM = 0
+                cur_mode = "Off"
             # Otherwise, linearly scale the PWM based on pricing.
             else:
                 # I think this is correct..
                 cur_PWM = ((self.high_price - cur_price)/(self.high_price - self.low_price))*(self.high_PWM - self.low_PWM) + self.low_PWM
                 # If cur_price == self.high_price, then cur_PWM = self.low_PWM.
                 # If cur_price == self.low_price, then cur_PWM = self.high_PWM.
-                cur_mode = "medium"
+                cur_mode = "Reduced Power"
 
             # Set the PWM appropriately.
             self.pin.value = cur_PWM / 100
