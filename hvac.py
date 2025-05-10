@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # A simple VEN class to test the functionality of the abstract class in ven.py.
 
 import time
