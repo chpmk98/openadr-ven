@@ -2,8 +2,8 @@
 
 import time
 from ven import VEN
-from gpiozero import PWMOutputDevice
-from guizero import App, Text
+# from gpiozero import PWMOutputDevice
+# from guizero import App, Text
 
 # A simple VEN class.
 class DemoVEN(VEN):    
@@ -15,18 +15,19 @@ class DemoVEN(VEN):
         self.high_price = 0.60
         self.low_PWM = 5    # On a scale from 0 to 100
         self.high_PWM = 20  # On a scale from 0 to 100
-        # For the PWM.
-        self.pin = PWMOutputDevice(18)
-        # For the display.
-        self.app = App()
-        self.text = Text(self.app, text="VEN Initialized!")
-        self.app.display()
+#         # For the PWM.
+#         self.pin = PWMOutputDevice(18)
+#         # For the display.
+#         self.app = App()
+#         self.text = Text(self.app, text="VEN Initialized!")
+#         self.app.display()
         
     # Helper function to display text using the App.
     def _display_text(self, a_string):
-        self.text.clear()
-        self.text.append(a_string)
-        self.app.display()
+        print(a_string)
+#         self.text.clear()
+#         self.text.append(a_string)
+#         self.app.display()
 
     # Automatically connect to the VTN instead of prompting the user.
     def _use_this_VTN(self, name, info):
@@ -70,7 +71,7 @@ class DemoVEN(VEN):
                 cur_mode = "Reduced Power"
 
             # Set the PWM appropriately.
-            self.pin.value = cur_PWM / 100
+#             self.pin.value = cur_PWM / 100
             
             # Display some text appropriately.
             self._display_text("Current Price: {}\nCurrent Mode: {}\nCurrent PWM: {} percent".format(cur_price, cur_mode, cur_PWM))
