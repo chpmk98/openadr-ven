@@ -10,9 +10,6 @@ from operator import itemgetter
 from datetime import datetime
 from gpiozero import PWMOutputDevice
 
-logging.basicConfig()
-logger = logging.getLogger('DemoVEN')
-logger.setLevel(logging.INFO)
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -47,17 +44,17 @@ def get_index_in_variable_interval(seconds_per_step: int) -> int:
 
 
 # A simple VEN class.
-class DemoVEN(VEN):
+class HVAC_VEN(VEN):
     # Instantiate a VEN with some configurations.
-    def __init__(self, json_path=None):
-        super().__init__(json_path)
+    def __init__(self, json_path=None, logger=None):
+        super().__init__(json_path, logger=logger)
         self.interval_sleep = 5
         self.first_event = True
         # Device-specific parameters. May need to be changed.
         self.low_price = 0.10
-        self.high_price = 0.60
-        self.low_PWM = 5    # On a scale from 0 to 100
-        self.high_PWM = 20  # On a scale from 0 to 100
+        self.high_price = 0.4
+        self.low_PWM = 20   # On a scale from 0 to 100
+        self.high_PWM = 75  # On a scale from 0 to 100
         # For the PWM.
         self.pin = PWMOutputDevice(18)
 
@@ -69,7 +66,7 @@ class DemoVEN(VEN):
 
     # If there are no programs on the VTN, wait for 4 seconds and scan again.
     def _no_programs_try_again(self):
-        logger.info("No programs found. Trying again...")
+        self.logger.info("No programs found. Trying again...")
         time.sleep(4)
         return True
 
@@ -81,7 +78,7 @@ class DemoVEN(VEN):
         interval_id = interval.get('id', None)
         payload = interval.get('payloads', [])[0]
         cur_price = payload.get('values', [])[0]
-        logger.debug(f'operateOnProgramEvents,curPrice={cur_price}')
+        self.logger.debug(f'operateOnProgramEvents,curPrice={cur_price}')
 
         # If the price is low, run the PWM high throttle.
         if cur_price <= self.low_price:
@@ -103,14 +100,14 @@ class DemoVEN(VEN):
         self.pin.value = cur_PWM / 100
 
         # Display some text appropriately.
-        logger.info(f'Interval: {interval_id}, Price: {round(cur_price,2)}, Mode: {cur_mode}, PWM: {round(cur_PWM,0)} percent')
+        self.logger.info(f'Interval: {interval_id}, Price: {round(cur_price,2)}, Mode: {cur_mode}, PWM: {round(cur_PWM,0)} percent')
 
     # Operates on the events for our selected program.
     def _operate_on_program_events(self):
         if self.events is None:
-            logger.info("No events found.")
+            self.logger.info("No events found.")
         else:
-            logger.debug(f'operateOnProgramEvents,event={pprint.pformat(self.events, indent=2)}')
+            self.logger.debug(f'operateOnProgramEvents,event={pprint.pformat(self.events, indent=2)}')
             # This may change depending on the format of the events loaded on the VTN, but I am assuming
             # that we just read off the first interval of the first event and use that.
             event_intervals = sorted(self.events[0].getIntervals(), key=itemgetter('id'))
@@ -127,10 +124,13 @@ class DemoVEN(VEN):
     # Waits until an appropriate time to grab the next program.
     def _wait(self):
         #time.sleep(self.interval_sleep)
-        logger.info(f'Pause/wait 0 seconds before fetching next 24 hours of prices')
+        self.logger.info(f'Pause/wait 0 seconds before fetching next 24 hours of prices')
         return
 
 if __name__ == "__main__":
-    a_ven = DemoVEN("./configs/hvac.json")
+    logging.basicConfig()
+    logger = logging.getLogger('HVAC-VEN')
+    logger.setLevel(logging.INFO)
+    a_ven = HVAC_VEN("./configs/hvac.json", logger=logger)
     a_ven.run()
     logger.info("Done.")
