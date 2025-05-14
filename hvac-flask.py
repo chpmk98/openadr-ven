@@ -53,6 +53,9 @@ class HVAC_VEN(VEN):
     def __init__(self, json_path=None, logger=None):
         super().__init__(json_path, logger=logger)
         self.interval_sleep = 5
+        self.current_price = 0
+        self.current_mode = ""
+        self.current_PWM = 0
         # Device-specific parameters. May need to be changed.
         self.low_price = 0.10
         self.high_price = 0.4
@@ -113,7 +116,7 @@ class HVAC_VEN(VEN):
     def _operate_on_program_events(self):
         if self.events is None:
             self.logger.info("No events found.")
-        else:
+        elif self.events[0]:
             self.logger.debug(f'operateOnProgramEvents,event={pprint.pformat(self.events, indent=2)}')
             #
             event_intervals = self.events[0].getIntervals()
@@ -122,6 +125,8 @@ class HVAC_VEN(VEN):
             for i in range(now_id, 24):
                 self._process_event_interval(event_intervals_dict.get(i,{}))
                 time.sleep(self.interval_sleep)
+        else:
+            self.logger.info(f'operateOnProgramEventsNoEvents!')
 
     # Waits until an appropriate time to grab the next program.
     def _wait(self):
