@@ -11,6 +11,9 @@ from oadr30.vtn import VTNOps
 
 import time
 
+import netifaces
+import ipaddress
+
 # An abstract VEN class.
 class VEN(ABC):
     # A helper function to get key-value items from config files.
