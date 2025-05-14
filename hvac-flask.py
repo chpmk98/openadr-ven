@@ -5,11 +5,15 @@
 import time
 import logging
 import pprint
+import flask
+from flask import Flask, render_template, redirect, url_for, jsonify
 from ven import VEN
 from operator import itemgetter
 from datetime import datetime
 from gpiozero import PWMOutputDevice
-
+import wsgiserver
+from threading import Thread
+from functools import partial
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -125,10 +129,57 @@ class HVAC_VEN(VEN):
         self.logger.info(f'Pause/wait 0 seconds before fetching next 24 hours of prices')
         return
 
+
+def create_ven_app(ven):
+
+    app = Flask('HVAC')
+
+    @app.route("/")
+    def home():
+        return render_template("hvac.html")
+
+    @app.route('/chart_data')
+    def data():
+        # Get current price data from the event
+        current_price = ven.current_price
+        throttle = ven.current_PWM / 100
+        # Calculate min and max for gauge range
+        # Using a buffer of 20% below min and above max for better visualization
+        min_price = 0
+        max_price = 1
+
+        # Create gauge chart data
+        gauge_data = {
+            "currentValue": current_price,
+            "min": min_price,
+            "max": max_price,
+            "currentThrottle": throttle,
+            "minThrottle": 0,
+            "maxThrottle": 1
+        }
+        return jsonify(gauge_data)
+
+    return app
+
+
+def serve(app):
+    http_server = wsgiserver.WSGIServer(app, host='0.0.0.0', port=8081)
+    http_server.start()
+
 if __name__ == "__main__":
     logging.basicConfig()
     logger = logging.getLogger('HVAC-VEN')
     logger.setLevel(logging.INFO)
+
     a_ven = HVAC_VEN("./configs/hvac.json", logger=logger)
+
+    app = create_ven_app(a_ven)
+
+    # Run the server in a separate thread
+    thread = Thread(target=partial(serve, app))
+    thread.daemon = True  # Optional: stop server when main thread exits
+    thread.start()
+    # app.run(port=8081, debug=True)
+
     a_ven.run()
     logger.info("Done.")
