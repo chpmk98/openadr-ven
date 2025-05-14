@@ -68,9 +68,21 @@ class VEN(ABC):
     # Advertises itself as a VEN over mDNS for local discovery.
     def _start_mDNS_advertisements(self):
         # Get the local IP address(es)
-        local_IPs = socket.gethostbyname_ex(socket.gethostname())[-1]
-        boring_IPs = ['127.0.0.1', '192.168.56.1'] # We do not care about these IP addresses
-        local_IPs = list(set(local_IPs) - set(boring_IPs)) # Should give us the useful IP addresses
+        local_IPs = []
+        # local_IPs = socket.gethostbyname_ex(socket.gethostname())[-1]
+        # boring_IPs = ['127.0.0.1', '192.168.56.1'] # We do not care about these IP addresses
+        # local_IPs = list(set(local_IPs) - set(boring_IPs)) # Should give us the useful IP addresses
+        # For ethernet?
+        ifaces = netifaces.interfaces()
+        span_panel_interfaces = ['eth0', 'eth1', 'wlan0']
+        for if_name in span_panel_interfaces:
+            if if_name in ifaces:
+                if_addrs = netifaces.ifaddresses(if_name)
+                for family, addrs in if_addrs.items():
+                    for addr in addrs:
+                        # Looking only for IPv4 addresses.
+                        if family == netifaces.AF_INET:
+                            local_IPs.append(str(ipaddress.IPv4Address(addr['addr'])))
 
         # Get DNS-SD advertisement information from our config.
         self.openadr_version = self._get_config("OpenADR version")
