@@ -57,7 +57,7 @@ class HVAC_VEN(VEN):
         self.low_price = 0.10
         self.high_price = 0.4
         self.low_PWM = 20   # On a scale from 0 to 100
-        self.high_PWM = 75  # On a scale from 0 to 100
+        self.high_PWM = 100  # On a scale from 0 to 100
         # For the PWM.
         self.pin = PWMOutputDevice(18)
 
@@ -179,7 +179,6 @@ if __name__ == "__main__":
     thread = Thread(target=partial(serve, app))
     thread.daemon = True  # Optional: stop server when main thread exits
     thread.start()
-    # app.run(port=8081, debug=True)
 
     a_ven.run()
     logger.info("Done.")
