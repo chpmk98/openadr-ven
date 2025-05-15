@@ -116,7 +116,7 @@ class HVAC_VEN(VEN):
     def _operate_on_program_events(self):
         if self.events is None:
             self.logger.info("No events found.")
-        elif self.events[0]:
+        elif len(self.events) > 0 and self.events[0]:
             self.logger.debug(f'operateOnProgramEvents,event={pprint.pformat(self.events, indent=2)}')
             #
             event_intervals = self.events[0].getIntervals()
