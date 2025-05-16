@@ -208,12 +208,12 @@ def serve(app):
 
 if __name__ == "__main__":
     logging.basicConfig()
-    logger = logging.getLogger('HVAC-VEN')
+    logger = logging.getLogger('EV-VEN')
     logger.setLevel(logging.INFO)
 
-    a_ven = HVAC_VEN("./configs/hvac.json", logger=logger)
+    a_ven = HVAC_VEN("./configs/ev.json", logger=logger)
 
-    app = create_ven_app(a_ven, 'hvac')
+    app = create_ven_app(a_ven, 'ev')
 
     # Run the server in a separate thread
     thread = Thread(target=partial(serve, app))
