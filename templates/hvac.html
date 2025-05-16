@@ -95,17 +95,17 @@
             if (value < lowThreshold) {
                 return 'rgba(40, 167, 69, 1)'; // Bright green for low prices
             } else if (value < highThreshold) {
-                return 'rgba(255, 205, 86, 1)'; // Yellow for medium prices
+                return 'rgba(255,193,8, 1)'; // Yellow for medium prices
             } else {
-                return 'rgba(255, 99, 132, 1)'; // Red for high prices
+                return 'rgba(244,67,54, 1)'; // Red for high prices
             }
         }
         function getGaugeColorsLoad(value, lowThreshold, highThreshold) {
             // Use static threshold values directly
             if (value < lowThreshold) {
-                return 'rgba(255, 99, 132, 1)'; // Red for high prices
+                return 'rgba(244,67,54, 1)'; // Red for high prices
             } else if (value < highThreshold) {
-                return 'rgba(255, 205, 86, 1)'; // Yellow for medium prices
+                return 'rgba(255,193,8, 1)'; // Yellow for medium prices
             } else {
                 return 'rgba(40, 167, 69, 1)'; // Bright green for low prices
             }
