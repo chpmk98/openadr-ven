@@ -2,6 +2,8 @@
 
 # A simple VEN class to test the functionality of the abstract class in ven.py.
 
+# https://github.com/lazlop/oa3_price_bl/tree/main/ven
+
 import time
 import logging
 import pprint
