@@ -195,6 +195,11 @@ class VEN(ABC):
 
     # For browsing through local VTNs.
     def _on_service_found(self, zeroconf, service_type, name, state_change):
+        # If we already connected to a VTN, we can just close out our browser and return.
+        if self.vtn is not None:
+            zeroconf.close()
+            return
+        # Otherwise, we parse the discovered advertisement.
         if state_change is ServiceStateChange.Added:
             info = zeroconf.get_service_info(service_type, name)
             if info:
@@ -253,9 +258,9 @@ class VEN(ABC):
                     # Break if we found and connected to a VTN.
                     if self.vtn is not None:
                         break
-                # If we failed to find a VTN, close the browser for now and try to connect to the last VTN we connected to.
-                if self.vtn is None:
-                    browser_zeroconf.close()
+#                 # If we failed to find a VTN, close the browser for now and try to connect to the last VTN we connected to.
+#                 if self.vtn is None:
+#                     browser_zeroconf.close()
             # If we were unable to find a VTN, try connecting to the last VTN we had connected to before.
             if self.vtn is None and self.last_VTN is not None:
                 self._attempt_connection(self.last_VTN)
