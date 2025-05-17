@@ -16,6 +16,7 @@
         "port": 8000,
         "base URL": ""
     },
+    "last VTN path": "./last_VTN.json",
     "VEN": {
         "client_id": "ven_client",
         "client_secret": "999"

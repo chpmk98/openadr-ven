@@ -14,6 +14,8 @@ import time
 import netifaces
 import ipaddress
 
+import os
+
 # An abstract VEN class.
 class VEN(ABC):
     # A helper function to get key-value items from config files.
@@ -63,6 +65,18 @@ class VEN(ABC):
         self.vtn = None
         self.zeroconf = None
         self.program_id = self._get_config("program ID", none_ok=True)
+        # Grab details for the last VTN we connected to, if it exists. 
+        self.last_VTN_path = self._get_config("last VTN path", none_ok=True)
+        if self.last_VTN_path is None:
+            self.last_VTN_path = "./last_VTN.json"
+            self.last_VTN = None
+        else:
+            if os.path.exists(self.last_VTN_path):
+                with open(self.last_VTN_path, 'r') as vtn_file:
+                    self.last_VTN = json.load(vtn_file)
+                    self.last_VTN["addresses"] = [eval(an_address) for an_address in self.last_VTN["addresses"]]
+            else:
+                self.last_VTN = None
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # mDNS self-advertisements
@@ -205,6 +219,10 @@ class VEN(ABC):
 
                 # Otherwise we successfully connected to a VTN and can close the browser.
                 zeroconf.close()
+                
+                # Save the information of the VTN we connected to.
+                with open(self.last_VTN_path, 'w') as vtn_file:
+                    json.dump(a_VTN, vtn_file, default=repr)
 
     # Browses for a local VTN to connect to.
     def _connect_to_VTN(self):
@@ -212,24 +230,36 @@ class VEN(ABC):
         target_VTN = self._get_config("VTN", none_ok=True)
         # Pull this device's predefined VEN client information from config
         self.ven = self._get_config("VEN")
-        # If a VTN is already pre-defined, attempt connection
-        if target_VTN is not None:
-            self._attempt_connection(target_VTN)
-        # Otherwise, look for one on local network
-        if self.vtn is None:
-            self.logger.info("Looking for a VTN on the local network using DNS-SD...")
-            # If we didn't instantiate self.dnssd for DNS-SD advertisements, do so now.
-            if not self.advertise:
-                self.dnssd = self._get_config("DNS-SD")
-                self.dnssd_type = self.dnssd["type"]
-            # Instantiate a Zeroconf for the browser
-            browser_zeroconf = Zeroconf()
-            self.browser = ServiceBrowser(browser_zeroconf, "{}.local.".format(self.dnssd_type), handlers=[self._on_service_found])
-            # Wait until we find something.
-            while self.vtn is None:
-                time.sleep(0.1)
+        
+        # Loop through three phases of looking for a predefined VTN, looking for one online, 
+        # and trying to use the last one we connected to.
+        while self.vtn is None:
+            # If a VTN is already pre-defined, attempt connection
+            if target_VTN is not None:
+                self._attempt_connection(target_VTN)
+            # Otherwise, look for one on local network for 5 seconds
+            if self.vtn is None:
+                self.logger.info("Looking for a VTN on the local network using DNS-SD...")
+                # If we didn't instantiate self.dnssd for DNS-SD advertisements, do so now.
+                if not self.advertise:
+                    self.dnssd = self._get_config("DNS-SD")
+                    self.dnssd_type = self.dnssd["type"]
+                # Instantiate a Zeroconf for the browser
+                browser_zeroconf = Zeroconf()
+                self.browser = ServiceBrowser(browser_zeroconf, "{}.local.".format(self.dnssd_type), handlers=[self._on_service_found])
+                # Wait for five seconds.
+                for _ in range(50):
+                    time.sleep(0.1)
+                    # Break if we found and connected to a VTN.
+                    if self.vtn is not None:
+                        break
+                # If we failed to find a VTN, close the browser for now and try to connect to the last VTN we connected to.
+                if self.vtn is None:
+                    browser_zeroconf.close()
+            # If we were unable to find a VTN, try connecting to the last VTN we had connected to before.
+            if self.vtn is None and self.last_VTN is not None:
+                self._attempt_connection(self.last_VTN)
         # Once we get to this point, we should be successfully connected to a VTN, so we can just return.
-
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # Program and Events selection
@@ -310,11 +340,19 @@ class VEN(ABC):
         if self.advertise:
             self._start_mDNS_advertisements()
 
-        # Connect to a VTN.
-        self._connect_to_VTN()
-
-        # Confirm the VTN has the desired program (or select a program that is available on the VTN).
-        self._select_program()
+        # Sometimes, the VTN connects successfully but fails to authenticate when trying to grab programs.
+        # Not entirely sure why this is the case, but tossing a while loop here for now to catch that.
+        while True:
+            # Connect to a VTN.
+            self._connect_to_VTN()
+    
+            # Confirm the VTN has the desired program (or select a program that is available on the VTN).
+            try:
+                self._select_program()
+                break
+            except:
+                # If this fails for some reason, get rid of the VTN we connected to and try again.
+                self.vtn = None
 
         # While connected, operate forever.
         try:
