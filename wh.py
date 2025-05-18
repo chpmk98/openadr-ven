@@ -213,7 +213,7 @@ if __name__ == "__main__":
     logger = logging.getLogger('WH-VEN')
     logger.setLevel(logging.INFO)
 
-    a_ven = WH_VEN("./configs/wh.json.json", logger=logger)
+    a_ven = WH_VEN("./configs/wh.json", logger=logger)
 
     app = create_ven_app(a_ven, 'wh')
 
