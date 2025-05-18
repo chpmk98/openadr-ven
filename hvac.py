@@ -2,14 +2,20 @@
 
 # A simple VEN class to test the functionality of the abstract class in ven.py.
 
+# https://github.com/lazlop/oa3_price_bl/tree/main/ven
+
 import time
 import logging
 import pprint
+import flask
+from flask import Flask, render_template, redirect, url_for, jsonify
 from ven import VEN
 from operator import itemgetter
 from datetime import datetime
 from gpiozero import PWMOutputDevice
-
+import wsgiserver
+from threading import Thread
+from functools import partial
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -27,6 +33,32 @@ def get_index_in_variable_interval(seconds_per_step: int) -> int:
     seconds_into_interval = total_seconds_today - interval_start
     index = seconds_into_interval // seconds_per_step
     return int(index)
+
+
+def seconds_until_next_interval(seconds_per_step: int) -> float:
+    """
+    https://chatgpt.com/share/681fb99d-3750-800f-b6da-5f0470e7c629
+    """
+    if seconds_per_step <= 0:
+        raise ValueError("seconds_per_step must be a positive integer")
+
+    interval_length = 24 * seconds_per_step
+    now = datetime.now()
+    total_seconds_today = now.hour * 3600 + now.minute * 60 + now.second + now.microsecond / 1_000_000
+    next_interval_start = ((total_seconds_today // interval_length) + 1) * interval_length
+    seconds_remaining = next_interval_start - total_seconds_today
+    return seconds_remaining
+
+
+def seconds_until_next_step(seconds_per_step: int) -> float:
+    if seconds_per_step <= 0:
+        raise ValueError("seconds_per_step must be a positive integer")
+
+    now = datetime.now()
+    total_seconds_today = now.hour * 3600 + now.minute * 60 + now.second + now.microsecond / 1_000_000
+    interval_step_offset = total_seconds_today % seconds_per_step
+    seconds_remaining = seconds_per_step - interval_step_offset
+    return seconds_remaining
 
 
 # Example Event
@@ -49,12 +81,15 @@ class HVAC_VEN(VEN):
     def __init__(self, json_path=None, logger=None):
         super().__init__(json_path, logger=logger)
         self.interval_sleep = 5
-        self.first_event = True
+        self.interval_id = 0
+        self.current_price = 0
+        self.current_mode = ""
+        self.current_PWM = 0
         # Device-specific parameters. May need to be changed.
         self.low_price = 0.10
         self.high_price = 0.4
         self.low_PWM = 20   # On a scale from 0 to 100
-        self.high_PWM = 75  # On a scale from 0 to 100
+        self.high_PWM = 100  # On a scale from 0 to 100
         # For the PWM.
         self.pin = PWMOutputDevice(18)
 
@@ -75,9 +110,11 @@ class HVAC_VEN(VEN):
         return 0
 
     def _process_event_interval(self, interval):
-        interval_id = interval.get('id', None)
+        interval_id = interval.get('id', 0)
+        self.interval_id = interval_id
         payload = interval.get('payloads', [])[0]
         cur_price = payload.get('values', [])[0]
+        self.current_price = cur_price
         self.logger.debug(f'operateOnProgramEvents,curPrice={cur_price}')
 
         # If the price is low, run the PWM high throttle.
@@ -95,6 +132,8 @@ class HVAC_VEN(VEN):
             # If cur_price == self.high_price, then cur_PWM = self.low_PWM.
             # If cur_price == self.low_price, then cur_PWM = self.high_PWM.
             cur_mode = "Reduced Power"
+        self.current_mode = cur_mode
+        self.current_PWM = cur_PWM
 
         # Set the PWM appropriately.
         self.pin.value = cur_PWM / 100
@@ -106,20 +145,17 @@ class HVAC_VEN(VEN):
     def _operate_on_program_events(self):
         if self.events is None:
             self.logger.info("No events found.")
-        else:
+        elif len(self.events) > 0 and self.events[0]:
             self.logger.debug(f'operateOnProgramEvents,event={pprint.pformat(self.events, indent=2)}')
-            # This may change depending on the format of the events loaded on the VTN, but I am assuming
-            # that we just read off the first interval of the first event and use that.
-            event_intervals = sorted(self.events[0].getIntervals(), key=itemgetter('id'))
-            if self.first_event:
-                # The first time we run, we need start at the index/interval corresponding to now, to ensure all VENs are operating on the current time
-                now_id = get_index_in_variable_interval(self.interval_sleep)
-                trimmed_event_intevals = [i for i in event_intervals if i.get('id', 0) >= now_id]
-                event_intervals = trimmed_event_intevals
-                self.first_event = False
-            for interval in event_intervals:
-                self._process_event_interval(interval)
-                time.sleep(self.interval_sleep)
+            #
+            event_intervals = self.events[0].getIntervals()
+            event_intervals_dict = {item['id']: item for item in event_intervals}
+            now_id = get_index_in_variable_interval(self.interval_sleep)
+            for i in range(now_id, 24):
+                self._process_event_interval(event_intervals_dict.get(i,{}))
+                time.sleep(seconds_until_next_step(self.interval_sleep))
+        else:
+            self.logger.info(f'operateOnProgramEventsNoEvents!')
 
     # Waits until an appropriate time to grab the next program.
     def _wait(self):
@@ -127,10 +163,64 @@ class HVAC_VEN(VEN):
         self.logger.info(f'Pause/wait 0 seconds before fetching next 24 hours of prices')
         return
 
+
+def create_ven_app(ven, ven_name: str):
+
+    app = Flask(ven_name.upper())
+
+    @app.route("/")
+    def home():
+        return render_template(f'{ven_name}.html')
+
+    @app.route('/chart_data')
+    def data():
+        # Get current price data from the event
+        current_price = ven.current_price
+        throttle = ven.current_PWM / 100
+        # Calculate min and max for gauge range
+        # Using a buffer of 20% below min and above max for better visualization
+        min_price = 0
+        max_price = 1
+        hour = ven.interval_id
+
+        # Create gauge chart data
+        gauge_data = {
+            "currentValue": current_price,
+            "min": min_price,
+            "max": max_price,
+            "currentThrottle": throttle,
+            "minThrottle": 0,
+            "maxThrottle": 1,
+            "currentHour": hour,
+            # Static threshold values for price gauge
+            "priceLowThreshold": ven.low_price,  # Static value for low price threshold
+            "priceHighThreshold": ven.high_price,  # Static value for high price threshold
+            # Static threshold values for throttle gauge
+            "throttleLowThreshold": ven.low_PWM / 100,  # Static value for low throttle threshold
+            "throttleHighThreshold": ven.high_PWM / 100  # Static value for high throttle threshold
+        }
+        return jsonify(gauge_data)
+
+    return app
+
+
+def serve(app):
+    http_server = wsgiserver.WSGIServer(app, host='0.0.0.0', port=8081)
+    http_server.start()
+
 if __name__ == "__main__":
     logging.basicConfig()
     logger = logging.getLogger('HVAC-VEN')
     logger.setLevel(logging.INFO)
+
     a_ven = HVAC_VEN("./configs/hvac.json", logger=logger)
+
+    app = create_ven_app(a_ven, 'hvac')
+
+    # Run the server in a separate thread
+    thread = Thread(target=partial(serve, app))
+    thread.daemon = True  # Optional: stop server when main thread exits
+    thread.start()
+
     a_ven.run()
     logger.info("Done.")

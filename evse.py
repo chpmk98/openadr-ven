@@ -2,8 +2,6 @@
 
 # A simple VEN class to test the functionality of the abstract class in ven.py.
 
-# https://github.com/lazlop/oa3_price_bl/tree/main/ven
-
 import time
 import logging
 import pprint
@@ -76,7 +74,7 @@ def seconds_until_next_step(seconds_per_step: int) -> float:
 
 
 # A simple VEN class.
-class HVAC_VEN(VEN):
+class EVSE_VEN(VEN):
     # Instantiate a VEN with some configurations.
     def __init__(self, json_path=None, logger=None):
         super().__init__(json_path, logger=logger)
@@ -210,12 +208,12 @@ def serve(app):
 
 if __name__ == "__main__":
     logging.basicConfig()
-    logger = logging.getLogger('HVAC-VEN')
+    logger = logging.getLogger('EVSE-VEN')
     logger.setLevel(logging.INFO)
 
-    a_ven = HVAC_VEN("./configs/hvac.json", logger=logger)
+    a_ven = EVSE_VEN("./configs/evse.json", logger=logger)
 
-    app = create_ven_app(a_ven, 'hvac')
+    app = create_ven_app(a_ven, 'evse')
 
     # Run the server in a separate thread
     thread = Thread(target=partial(serve, app))

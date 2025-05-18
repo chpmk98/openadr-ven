@@ -5,18 +5,18 @@
     "program ID": "local",
     "DNS-SD": {
         "type": "_openadr-http._tcp",
-        "name": "Default VEN",
+        "name": "VEN-WH",
         "port": 80,
         "txt": {
-            "appliance type": "Default Load"
+            "appliance type": "WH"
         }
     },
+    "last VTN path": "./last_VTN.json",
     "VTN": {
         "addresses": [],
         "port": 8000,
         "base URL": ""
     },
-    "last VTN path": "./last_VTN.json",
     "VEN": {
         "client_id": "ven_client",
         "client_secret": "999"

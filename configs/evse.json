@@ -11,6 +11,7 @@
             "appliance type": "EVSE"
         }
     },
+    "last VTN path": "./last_VTN.json",
     "VTN": {
         "addresses": [],
         "port": 8000,
