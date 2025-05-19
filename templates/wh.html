@@ -11,26 +11,29 @@
         body {
             padding: 0;
             margin: 0;
-            font-size: 14px;
+            font-size: 60px;
+            font-weight: 500;
         }
         .container {
             padding: 5px;
             max-width: 100%;
         }
         h1 {
-            font-size: 1.5rem;
+            font-size: 3rem;
             margin-bottom: 0.5rem;
+            font-weight: bold;
         }
         h2 {
-            font-size: 1.2rem;
+            font-size: 3rem;
             margin-bottom: 0.3rem;
+            font-weight: bold;
         }
         .gauge-container {
-            height: 250px;
+            height: 320px;
             margin-bottom: 15px;
         }
         .gauge-value {
-            font-size: 24px;
+            font-size: 60px;
             font-weight: bold;
             margin-top: 5px;
         }
@@ -58,11 +61,11 @@
                     <canvas id="gaugeChart1"></canvas>
                     <!-- Time Display positioned like SVGs in right gauge -->
                     <div style="position: absolute; top: 85%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 90px; z-index: 10;">
-                        <div id="current-time" class="text-center" style="font-size: 24px; font-weight: bold;"></div>
+                        <div id="current-time" class="text-center" style="font-size: 60px; font-weight: bold;"></div>
                     </div>
                 </div>
                 <div id="gauge-value1" class="text-center gauge-value"></div>
-                <div id="price-status" class="text-center" style="font-size: 18px; font-weight: bold;"></div>
+                <div id="price-status" class="text-center" style="font-size: 45px; font-weight: bold;"></div>
             </div>
 
             <!-- Second Gauge -->
@@ -71,14 +74,14 @@
                 <div class="gauge-container position-relative">
                     <canvas id="gaugeChart2"></canvas>
                     <!-- Preloaded SVGs for wh Charging - switched via display property -->
-                    <div style="position: absolute; top: 75%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 90px; z-index: 10;">
+                    <div style="position: absolute; top: 75%; left: 50%; transform: translate(-50%, -50%); width: 350px; height: 110px; z-index: 10;">
                         <object id="wh-charging" class="wh-svg" type="image/svg+xml" data="/static/images/wh-charging.svg" width="100%" height="100%" style="display: none;"></object>
                         <object id="wh-maintaining" class="wh-svg" type="image/svg+xml" data="/static/images/wh-maintaining.svg" width="100%" height="100%" style="display: none;"></object>
                         <object id="wh-discharging" class="wh-svg" type="image/svg+xml" data="/static/images/wh-discharging.svg" width="100%" height="100%" style="display: none;"></object>
                     </div>
                 </div>
                 <div id="gauge-value2" class="text-center gauge-value"></div>
-                <div id="throttle-status" class="text-center" style="font-size: 18px; font-weight: bold;"></div>
+                <div id="throttle-status" class="text-center" style="font-size: 45px; font-weight: bold;"></div>
             </div>
         </div>
     </div>
