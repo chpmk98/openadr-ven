@@ -79,7 +79,8 @@ class EVSE_VEN(VEN):
     def __init__(self, json_path=None, logger=None):
         super().__init__(json_path, logger=logger)
         self.interval_sleep = 5
-        self.interval_id = 0
+        self.interval_id = get_index_in_variable_interval(self.interval_sleep)
+        # self.interval_id = 0
         self.current_price = 0
         self.current_mode = ""
         self.current_PWM = 0

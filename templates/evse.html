@@ -213,11 +213,11 @@
 
             // Show the appropriate SVG based on throttle value using thresholds from gauge data
             if (currentThrottle < throttleLowThreshold) {
-                throttleStatus.textContent = "Stopping Charging...";
+                throttleStatus.textContent = "Charging Paused...";
                 throttleStatus.style.color = gauge2Color;
                 evDischarging.style.display = 'block';
             } else if (currentThrottle < throttleHighThreshold) {
-                throttleStatus.textContent = "Charging at Half Power...";
+                throttleStatus.textContent = "Charging at Reduced Power...";
                 throttleStatus.style.color = gauge2Color;
                 evMaintaining.style.display = 'block';
             } else {
