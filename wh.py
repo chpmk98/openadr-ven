@@ -110,6 +110,11 @@ class WH_VEN(VEN):
     def _get_desired_program_index(self, program_list):
         return 0
 
+    # Reset the current index when getting program events for the first time?
+    def _get_program_events(self):
+        super()._get_program_events()
+        self.interval_id = get_index_in_variable_interval(self.interval_sleep)
+
     def _process_event_interval(self, interval):
         interval_id = interval.get('id', 0)
         self.interval_id = interval_id
@@ -152,6 +157,7 @@ class WH_VEN(VEN):
             event_intervals = self.events[0].getIntervals()
             event_intervals_dict = {item['id']: item for item in event_intervals}
             now_id = get_index_in_variable_interval(self.interval_sleep)
+            self.interval_id = now_id
             for i in range(now_id, 24):
                 self._process_event_interval(event_intervals_dict.get(i,{}))
                 time.sleep(seconds_until_next_step(self.interval_sleep))
