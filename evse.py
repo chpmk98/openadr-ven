@@ -85,8 +85,8 @@ class EVSE_VEN(VEN):
         self.current_PWM = 0
         # Device-specific parameters. May need to be changed.
         self.low_price = 0.10
-        self.high_price = 0.4
-        self.low_PWM = 20   # On a scale from 0 to 100
+        self.high_price = 0.5
+        self.low_PWM = 10   # On a scale from 0 to 100
         self.high_PWM = 100  # On a scale from 0 to 100
         # For the PWM.
         self.pin = PWMOutputDevice(18)

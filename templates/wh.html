@@ -174,16 +174,16 @@
             const gauge2Color = getGaugeColorsLoad(currentThrottle, throttleLowThreshold, throttleHighThreshold);
 
             // Update the value displays
-            document.getElementById('gauge-value1').textContent = `$${currentValue.toFixed(4)}/kWh`;
+	    document.getElementById('gauge-value1').textContent = `${currentValue.toFixed(2)} $/kWh`;
             document.getElementById('gauge-value2').textContent = `${(currentThrottle * 100).toFixed(0)}%`;
 
             // Update status texts based on values from gauge data
 
             // Format and display the current hour as time
             const timeDisplay = document.getElementById('current-time');
-            const formattedTime = "Time - "+ currentHour + ":00";
+            const formattedTime = "Hour: "+ currentHour;
             timeDisplay.textContent = formattedTime;
-            
+
             // Update price status using thresholds from gauge data
             const priceStatus = document.getElementById('price-status');
             if (currentValue < priceLowThreshold) {
@@ -205,12 +205,12 @@
             const whCharging = document.getElementById('wh-charging');
             const whMaintaining = document.getElementById('wh-maintaining');
             const whDischarging = document.getElementById('wh-discharging');
-            
+
             // Hide all SVGs first
             whCharging.style.display = 'none';
             whMaintaining.style.display = 'none';
             whDischarging.style.display = 'none';
-            
+
             // Show the appropriate SVG based on throttle value using thresholds from gauge data
             if (currentThrottle < throttleLowThreshold) {
                 throttleStatus.textContent = "Using stored energy...";

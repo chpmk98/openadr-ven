@@ -183,7 +183,7 @@
             const timeDisplay = document.getElementById('current-time');
             const formattedTime = "Hour: "+ currentHour;
             timeDisplay.textContent = formattedTime;
-            
+
             // Update price status using thresholds from gauge data
             const priceStatus = document.getElementById('price-status');
             if (currentValue < priceLowThreshold) {
@@ -205,12 +205,12 @@
             const hvacCharging = document.getElementById('hvac-charging');
             const hvacMaintaining = document.getElementById('hvac-maintaining');
             const hvacDischarging = document.getElementById('hvac-discharging');
-            
+
             // Hide all SVGs first
             hvacCharging.style.display = 'none';
             hvacMaintaining.style.display = 'none';
             hvacDischarging.style.display = 'none';
-            
+
             // Show the appropriate SVG based on throttle value using thresholds from gauge data
             if (currentThrottle < throttleLowThreshold) {
                 throttleStatus.textContent = "Increasing setpoint to reduce load...";

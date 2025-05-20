@@ -47,7 +47,7 @@
 </head>
 <body>
     <div class="container mt-2">
-        <h1 class="text-center">EV Price & Control</h1>
+        <h1 class="text-center">EVSE Price & Control</h1>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -70,7 +70,7 @@
 
             <!-- Second Gauge -->
             <div class="col col-6">
-                <h2 class="text-center">EV Control</h2>
+                <h2 class="text-center">EVSE Control</h2>
                 <div class="gauge-container position-relative">
                     <canvas id="gaugeChart2"></canvas>
                     <!-- Preloaded SVGs for EV Charging - switched via display property -->
@@ -96,7 +96,7 @@
         function getGaugeColorsPrice(value, lowThreshold, highThreshold) {
             // Use static threshold values directly
             if (value < lowThreshold) {
-                return 'rgba(76,176,80,1)'; // Bright green for low prices
+                return 'rgba(40, 167, 69, 1)'; // Bright green for low prices
             } else if (value < highThreshold) {
                 return 'rgba(255,193,8, 1)'; // Yellow for medium prices
             } else {
@@ -110,7 +110,7 @@
             } else if (value < highThreshold) {
                 return 'rgba(255,193,8, 1)'; // Yellow for medium prices
             } else {
-                return 'rgba(76,176,80,1)'; // Bright green for low prices
+		return 'rgba(40, 167, 69, 1)'; // Bright green for low prices
             }
         }
 
@@ -159,7 +159,7 @@
             const maxThrottle = gaugeData.maxThrottle;
             const currentThrottle = gaugeData.currentThrottle;
             const currentHour = gaugeData.currentHour;
-            
+
             // Get threshold values from gauge data
             const priceLowThreshold = gaugeData.priceLowThreshold;
             const priceHighThreshold = gaugeData.priceHighThreshold;
@@ -174,16 +174,16 @@
             const gauge2Color = getGaugeColorsLoad(currentThrottle, throttleLowThreshold, throttleHighThreshold);
 
             // Update the value displays
-            document.getElementById('gauge-value1').textContent = `$${currentValue.toFixed(4)}/kWh`;
+            document.getElementById('gauge-value1').textContent = `${currentValue.toFixed(2)} $/kWh`;
             document.getElementById('gauge-value2').textContent = `${(currentThrottle * 100).toFixed(0)}%`;
 
             // Update status texts based on values from gauge data
 
             // Format and display the current hour as time
             const timeDisplay = document.getElementById('current-time');
-            const formattedTime = "Time - "+ currentHour + ":00";
+            const formattedTime = "Hour: "+ currentHour;
             timeDisplay.textContent = formattedTime;
-            
+
             // Update price status using thresholds from gauge data
             const priceStatus = document.getElementById('price-status');
             if (currentValue < priceLowThreshold) {
@@ -205,12 +205,12 @@
             const evCharging = document.getElementById('ev-charging');
             const evMaintaining = document.getElementById('ev-maintaining');
             const evDischarging = document.getElementById('ev-discharging');
-            
+
             // Hide all SVGs first
             evCharging.style.display = 'none';
             evMaintaining.style.display = 'none';
             evDischarging.style.display = 'none';
-            
+
             // Show the appropriate SVG based on throttle value using thresholds from gauge data
             if (currentThrottle < throttleLowThreshold) {
                 throttleStatus.textContent = "Stopping Charging...";
