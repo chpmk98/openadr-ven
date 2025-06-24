@@ -4,14 +4,23 @@
 from abc import ABC, abstractmethod
 import json
 
-import socket
-from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser, ServiceStateChange
-from oadr30.vtn import VTNOps
+# import socket
+# from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser, ServiceStateChange
+# from oadr30.vtn import VTNOps
 
 import time
+import machine
+
+import network
+import uasyncio
+
+from mdns_client import Client
+from mdns_client.service_discovery import ServiceResponse
+from mdns_client.service_discovery.txt_discovery import TXTServiceDiscovery
 
 # An abstract VEN class.
-class VEN(ABC):
+# Written in MicroPython for the Olimex ESP32-POE board.
+class ESP32VEN(ABC):
     # A helper function to get key-value items from config files.
     def _get_config(self, key, none_ok=False):
         if key in self.config:
@@ -46,6 +55,14 @@ class VEN(ABC):
         self.vtn = None
         self.zeroconf = None
         self.program_id = self._get_config("program ID", none_ok=True)
+        # This is needed to allow re-flashing without clearing all memory.
+        self.repl_button = machine.Pin(34, machine.Pin.IN, machine.Pin.PULL_UP)
+        # This is for mDNS.
+        self.wlan = network.WLAN(network.STA_IF)
+        assert wlan.isconnected(), "Network isn't connected."
+        self.own_ip_address = self.wlan.ifconfig()[0]
+        self.loop = uasyncio.get_event_loop()
+        self.client = Client(own_ip_address)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     # mDNS self-advertisements 
@@ -53,41 +70,13 @@ class VEN(ABC):
     
     # Advertises itself as a VEN over mDNS for local discovery.
     def _start_mDNS_advertisements(self):
-        # Get the local IP address(es)
-        local_IPs = socket.gethostbyname_ex(socket.gethostname())[-1]
-        boring_IPs = ['127.0.0.1', '192.168.56.1'] # We do not care about these IP addresses
-        local_IPs = list(set(local_IPs) - set(boring_IPs)) # Should give us the useful IP addresses
-        
-        # Get DNS-SD advertisement information from our config.
-        self.openadr_version = self._get_config("OpenADR version")
-        self.dnssd = self._get_config("DNS-SD")
-        self.dnssd_type = self.dnssd["type"]
-        self.dnssd_name = self.dnssd["name"]
-        self.dnssd_port = self.dnssd["port"]
-        self.dnssd_txt = self.dnssd["txt"] if "txt" in self.dnssd else None
-        
-        # Put together a DNS-SD service advertisement and start running it.
-        self.zeroconf = Zeroconf()
-        desc = {"OpenADR {}".format(self.openadr_version): None,
-                "version": self.openadr_version, 
-                "role":"ven",
-                "documentation":"https://www.openadr.org/openadr-3-0",}
-        if self.dnssd_txt is not None:
-            desc.update(self.dnssd_txt)
-        self.wsInfo = ServiceInfo('{}.local.'.format(self.dnssd_type),
-                                  "{}.{}.local.".format(self.dnssd_name, self.dnssd_type),
-                                  server="{}.local.".format(self.dnssd_name.replace(" ", "-")),
-                                  addresses=[socket.inet_aton(an_IP) for an_IP in local_IPs],
-                                  port=self.dnssd_port,
-                                  properties=desc)
-        self.zeroconf.register_service(self.wsInfo) # Start advertising.
+        # This is theoretically possible with the cbrand/micropython-mdns library,
+        # but not critical for proper VEN functioning.
+        pass
     
     # Unregisters itself as a VEN.
     def _stop_mDNS_advertisements(self):
-        # Do stuff based on the above method.
-        self.zeroconf.unregister_service(self.wsInfo)
-        self.zeroconf.close()
-
+        pass
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     # HTTP(S) connection to the VTN 
@@ -113,9 +102,9 @@ class VEN(ABC):
             if self.vtn is not None:
                 print("Successfully connected to {}!".format(a_VTN["full URL"]))
                 return
-        # Otherwise, we assume that a_VTN is a dictionary with "addresses":list, "port":int, "base URL":string.
-        for an_address in a_VTN["addresses"]:
-            VTN_IP = socket.inet_ntoa(an_address)
+        # Otherwise, we assume that a_VTN is a dictionary with "addresses":list[str], "port":int, "base URL":string.
+        for VTN_IP in a_VTN["addresses"]:
+#             VTN_IP = socket.inet_ntoa(an_address)
             VTN_full_url = "http://{}:{}{}".format(VTN_IP, a_VTN["port"], a_VTN["base URL"])
             self._connect_to_full_URL(VTN_full_url)
             # Exit the loop if we successfully connected. Otherwise, continue attempting connections.
@@ -128,54 +117,80 @@ class VEN(ABC):
     # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     
     # How we select the "correct" VTNs. Returns True to connect, False to continue looking.
-    # In this case, we ask the user for input.
-    def _use_this_VTN(self, name, info):
-        # Notify that we found something.
-        print("Local VTN server '{}' found with address(es) {} at port {}.".format(name, info.addresses, info.port))
-        go_nogo = input("Would you like to connect to '{}'? [y/n] ".format(name))
-        while go_nogo not in ("y", "n"):
-            go_nogo = input("Sorry, I do not know what '{}' means.\nPlease enter 'y' to connect, or enter 'n' to keep looking for another VTN: ".format(go_nogo, name))
-        
-        # If we do not want to connect to this VTN, then we ignore it.
-        return go_nogo == "y"
+    # In this case, we automatically attempt a connection.
+    def _use_this_VTN(self, service_response):
+        # Wait two seconds, because this behaves poorly if the server is just spinning up.
+        time.sleep(2)
+        return True
     
     # Parses connection information out of the VTN mDNS advertisements.
     # Returns a dictionary with the appropriate fields, to be ingested by self._attempt_connection().
-    def _parse_VTN_advertisement(self, name, info):
+    def _parse_VTN_advertisement(self, service_response):
         # We grab its local IP, port number, and base URL.
         a_VTN = {
-            "addresses": info.addresses,
-            "port": info.port,
-            "base URL": info.properties[b"base_url"].decode("utf-8") # Assumes UTF-8 encoding.
+            "addresses": service_response.ips,
+            "port": service_response.port,
+            "base URL": service_response.txt_records["base_path"]
+#             "base URL": info.properties[b"base_url"].decode("utf-8") # Assumes UTF-8 encoding.
         }
         return a_VTN
     
-    # For browsing through local VTNs.
-    def _on_service_found(self, zeroconf, service_type, name, state_change):
-        if state_change is ServiceStateChange.Added:
-            info = zeroconf.get_service_info(service_type, name)
-            if info:
-                # If this thing is NOT a VTN, then we ignore it.
-                if info.properties[b"role"] != b"vtn":
-                    return
-                
-                # If we do not want to connect to this VTN, then we ignore it.
-                if not self._use_this_VTN(name, info):
-                    print("Rejecting local VTN '{}'. Continuing to look for other local VTNs...")
-                    return
-                
-                # Parse out the VTN connectivity information from the mDNS advertisement.
-                a_VTN = self._parse_VTN_advertisement(name, info)
-                
-                # Connect to the VTN.
-                self._attempt_connection(a_VTN)
-                # If we failed to connect, we continue looking.
-                if self.vtn is None:
-                    print("Failed connecting to local VTN '{}.' Continuing to look for other local VTNs...")
-                    return
-                
-                # Otherwise we successfully connected to a VTN and can close the browser.
-                zeroconf.close()
+#     # For browsing through local VTNs.
+#     def _on_service_found(self, zeroconf, service_type, name, state_change):
+#         if state_change is ServiceStateChange.Added:
+#             info = zeroconf.get_service_info(service_type, name)
+#             if info:
+#                 # If this thing is NOT a VTN, then we ignore it.
+#                 if info.properties[b"role"] != b"vtn":
+#                     return
+#                 
+#                 # If we do not want to connect to this VTN, then we ignore it.
+#                 if not self._use_this_VTN(name, info):
+#                     print("Rejecting local VTN '{}'. Continuing to look for other local VTNs...")
+#                     return
+#                 
+#                 # Parse out the VTN connectivity information from the mDNS advertisement.
+#                 a_VTN = self._parse_VTN_advertisement(name, info)
+#                 
+#                 # Connect to the VTN.
+#                 self._attempt_connection(a_VTN)
+#                 # If we failed to connect, we continue looking.
+#                 if self.vtn is None:
+#                     print("Failed connecting to local VTN '{}.' Continuing to look for other local VTNs...")
+#                     return
+#                 
+#                 # Otherwise we successfully connected to a VTN and can close the browser.
+#                 zeroconf.close()
+
+    # Scan for services once.
+    async def _discover_VTNs(self):
+        response_list = await self.discovery.query_once(self.dnssd_name, self.dnssd_protocol, timeout=1.0)
+        
+        # Look through our results.
+        for a_response in response_list:
+            # If this thing is NOT a VTN, then we ignore it.
+            if a_response.txt_records["role"] != "vtn":
+                continue
+            
+            # If we do not want to connect to this VTN, then we ignore it.
+            if not self._use_this_VTN(a_response):
+                print("Rejecting local VTN '{}'. Continuing to look for other local VTNs...".format(a_response.name))
+                continue
+            
+            # Parse out the VTN connectivity information from the mDNS advertisement.
+            a_VTN = self._parse_VTN_advertisement(a_response)
+            
+            # Connect to the VTN
+            self._attempt_connection(a_VTN)
+            # If we failed to connect, we continue looking.
+            if self.vtn is None:
+                print("Failed connecting to local VTN '{}'. Continuing to look for other local VTNs...".format(a_response.name))
+            else:
+                # Otherwise, we are done! 
+                # We use the first program listed in the advertisement, if not defined in config.
+                if self.program_id is None:
+                    self.program_id = a_response.txt_records["program_names"].split(",")[0]
+                return
 
     # Browses for a local VTN to connect to.
     def _connect_to_VTN(self):
@@ -189,15 +204,26 @@ class VEN(ABC):
         # Otherwise, look for one on local network
         if self.vtn is None:
             print("Looking for a VTN on the local network using DNS-SD...")
-            # If we didn't instantiate self.dnssd for DNS-SD advertisements, do so now.
-            if not self.advertise:
-                self.dnssd = self._get_config("DNS-SD")
-                self.dnssd_type = self.dnssd["type"]
-            # Instantiate a Zeroconf for the browser
-            browser_zeroconf = Zeroconf()
-            self.browser = ServiceBrowser(browser_zeroconf, "{}.local.".format(self.dnssd_type), handlers=[self._on_service_found])
+#             # If we didn't instantiate self.dnssd for DNS-SD advertisements, do so now.
+#             if not self.advertise:
+#                 self.dnssd = self._get_config("DNS-SD")
+#                 self.dnssd_type = self.dnssd["type"]
+#             # Instantiate a Zeroconf for the browser
+#             browser_zeroconf = Zeroconf()
+#             self.browser = ServiceBrowser(browser_zeroconf, "{}.local.".format(self.dnssd_type), handlers=[self._on_service_found])
+            # Set up our mDNS service discovery.
+            self.dnssd = self._get_config("DNS-SD")
+            self.dnssd_name = self.dnssd["name"]
+            self.dnssd_protocol = self.dnssd["protocol"]
+            self.discovery = TXTServiceDiscovery(self.client)
             # Wait until we find something.
             while self.vtn is None:
+                self.loop.run_until_complete(self._discover_VTNs())
+                
+                # If REPL button is pressed, drop to REPL
+                if self.repl_button.value() == 0:
+                    raise Exception("Dropping to REPL")
+
                 time.sleep(0.1)
         # Once we get to this point, we should be successfully connected to a VTN, so we can just return.
 
@@ -208,20 +234,16 @@ class VEN(ABC):
     
     # What to do when there are no events on the VTN.
     # Returns True to continue searching, False to break out and return.
+    # If there are no programs on the VTN, wait for 4 seconds and scan again.
     def _no_programs_try_again(self):
-        input("No programs found on this VTN. Press <Enter> to try again. ")
+        print("No programs found. Trying again...")
+        time.sleep(4)
         return True
-        
+    
     # Selects the desired program from a list of programs called program_list.
-    # Returns the 0-indexed index of the desired program in the list.
+    # Given a list of available programs, simply select the first one.
     def _get_desired_program_index(self, program_list):
-        print("Found {} programs! Which one do you want?".format(program_list.num_programs()))
-        for an_ind, a_program in enumerate(program_list, start=1):
-            print("[{}] Program ID: {}, Program Name: {}, Country: {}, Program Type: {}".format(an_ind, a_program.getId(), a_program["programName"], a_program["country"], a_program["programType"]))
-        selected_ind = int(input())-1
-        while selected_ind < 0 or selected_ind >= len(program_list):
-            selected_ind = int(input("'{}' not valid. Please enter an integer between 1 and {}: ".format(selected_ind, len(program_list))))-1
-        return selected_ind
+        return 0
     
     # Identifies the program we are planning to operate on, gets it from the VTN, and stores it in self.program.
     def _select_program(self):
