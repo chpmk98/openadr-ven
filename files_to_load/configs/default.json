@@ -4,9 +4,9 @@
     "OpenADR version": "3.0.1",
     "program ID": "local",
     "DNS-SD": {
-        "type": "_openadr3._tcp",
-        "name": "_openadr3",
-        "protocol": "_tcp",
+        "service_type": "_openadr3._tcp",
+        "service_name": "_openadr3",
+        "service_protocol": "_tcp",
         "name": "Default VEN",
         "port": 80,
         "txt": {

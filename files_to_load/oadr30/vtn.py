@@ -5,7 +5,7 @@ from .programs import Programs, Program
 from .events import Events, Event
 from .ven import VEN
 from .descriptors import ReportPayloadDescriptor
-import urequests as requests
+import requests
 import json
 from http import HTTPStatus
 from datetime import datetime, timedelta

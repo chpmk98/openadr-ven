@@ -1,7 +1,7 @@
 # An abstract class for a VEN load, along with several example implementations.
 # Each non-abstract VEN must implement their own response to the received price.
 
-from abc import ABC, abstractmethod
+# from abc import ABC, abstractmethod
 import json
 
 # import socket
@@ -20,7 +20,7 @@ from mdns_client.service_discovery.txt_discovery import TXTServiceDiscovery
 
 # An abstract VEN class.
 # Written in MicroPython for the Olimex ESP32-POE board.
-class ESP32VEN(ABC):
+class ESP32VEN: #(ABC):
     # A helper function to get key-value items from config files.
     def _get_config(self, key, none_ok=False):
         if key in self.config:
@@ -59,10 +59,10 @@ class ESP32VEN(ABC):
         self.repl_button = machine.Pin(34, machine.Pin.IN, machine.Pin.PULL_UP)
         # This is for mDNS.
         self.wlan = network.WLAN(network.STA_IF)
-        assert wlan.isconnected(), "Network isn't connected."
+        assert self.wlan.isconnected(), "Network isn't connected."
         self.own_ip_address = self.wlan.ifconfig()[0]
         self.loop = uasyncio.get_event_loop()
-        self.client = Client(own_ip_address)
+        self.client = Client(self.own_ip_address)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     # mDNS self-advertisements 
@@ -128,9 +128,9 @@ class ESP32VEN(ABC):
     def _parse_VTN_advertisement(self, service_response):
         # We grab its local IP, port number, and base URL.
         a_VTN = {
-            "addresses": service_response.ips,
-            "port": service_response.port,
-            "base URL": service_response.txt_records["base_path"]
+            "addresses": list(service_response.ips),
+            "port": int(service_response.port),
+            "base URL": service_response.txt_records["base_path"][0]
 #             "base URL": info.properties[b"base_url"].decode("utf-8") # Assumes UTF-8 encoding.
         }
         return a_VTN
@@ -164,12 +164,16 @@ class ESP32VEN(ABC):
 
     # Scan for services once.
     async def _discover_VTNs(self):
+        print("Scanning for {}.{}".format(self.dnssd_name, self.dnssd_protocol))
         response_list = await self.discovery.query_once(self.dnssd_name, self.dnssd_protocol, timeout=1.0)
+        print("Received {} responses.".format(len(response_list)))
         
         # Look through our results.
         for a_response in response_list:
+            print("Looking at {}.".format(a_response))
             # If this thing is NOT a VTN, then we ignore it.
-            if a_response.txt_records["role"] != "vtn":
+            if a_response.txt_records["role"][0] != "vtn":
+                print("Not a VTN, so ignoring! Role is {}.".format(a_response.txt_records["role"][0]))
                 continue
             
             # If we do not want to connect to this VTN, then we ignore it.
@@ -179,6 +183,7 @@ class ESP32VEN(ABC):
             
             # Parse out the VTN connectivity information from the mDNS advertisement.
             a_VTN = self._parse_VTN_advertisement(a_response)
+            print("Parsed advertisement as {}".format(a_VTN))
             
             # Connect to the VTN
             self._attempt_connection(a_VTN)
@@ -207,14 +212,14 @@ class ESP32VEN(ABC):
 #             # If we didn't instantiate self.dnssd for DNS-SD advertisements, do so now.
 #             if not self.advertise:
 #                 self.dnssd = self._get_config("DNS-SD")
-#                 self.dnssd_type = self.dnssd["type"]
+#                 self.dnssd_type = self.dnssd["service_type"]
 #             # Instantiate a Zeroconf for the browser
 #             browser_zeroconf = Zeroconf()
 #             self.browser = ServiceBrowser(browser_zeroconf, "{}.local.".format(self.dnssd_type), handlers=[self._on_service_found])
             # Set up our mDNS service discovery.
             self.dnssd = self._get_config("DNS-SD")
-            self.dnssd_name = self.dnssd["name"]
-            self.dnssd_protocol = self.dnssd["protocol"]
+            self.dnssd_name = self.dnssd["service_name"]
+            self.dnssd_protocol = self.dnssd["service_protocol"]
             self.discovery = TXTServiceDiscovery(self.client)
             # Wait until we find something.
             while self.vtn is None:
@@ -224,7 +229,7 @@ class ESP32VEN(ABC):
                 if self.repl_button.value() == 0:
                     raise Exception("Dropping to REPL")
 
-                time.sleep(0.1)
+                time.sleep(2)
         # Once we get to this point, we should be successfully connected to a VTN, so we can just return.
 
 
@@ -282,13 +287,13 @@ class ESP32VEN(ABC):
     
     # Operates on the event stored in self.events. 
     # This method will change, depending on the specific VEN.
-    @abstractmethod
+#     @abstractmethod
     def _operate_on_program_events(self):
         pass
     
     # Waits until an appropriate time to grab the next set of events.
     # This method will change, depending on the specific VEN.
-    @abstractmethod
+#     @abstractmethod
     def _wait(self):
         pass
 
