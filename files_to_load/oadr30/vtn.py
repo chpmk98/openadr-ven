@@ -2,13 +2,14 @@
 #MIT License
 from .log import Oadr3LoggedException, oadr3_log_critical, oadr3_log_error, oadr3_log_warning, oadr3_log_info
 from .programs import Programs, Program
-from .events import Events, Event
+# from .events import Events, Event
 from .ven import VEN
 from .descriptors import ReportPayloadDescriptor
 import requests
 import json
 from http import HTTPStatus
-from datetime import datetime, timedelta
+# from datetime import datetime, timedelta
+import time # An attempt to replace datetime.
 from typing import Literal
 
 OADR3_EVENT_BASE_URL = '/events'
@@ -63,7 +64,7 @@ class VTNOps():
                 return False
 
             self.token = response.json()
-            self.token['received'] = datetime.now()
+            self.token['received'] = time.time() # datetime.now()
             return True
         except Exception as ex:
             oadr3_log_critical(f"failed processing auth request")
@@ -77,10 +78,11 @@ class VTNOps():
             return False
         try:
             # Calculate the expiration time
-            expire_time = self.token['received'] + (timedelta(seconds=self.token['expires_in']) - timedelta(seconds=10))
-    
+            expire_time = self.token['received'] + self.token['expires_in'] - 10 # (timedelta(seconds=self.token['expires_in']) - timedelta(seconds=10))
+            ## ^^ No clue where we ever set self.token['expires_in'] but whatever.
+            
             # Compare the current time with the expiration time
-            return datetime.now() >= expire_time 
+            return time.time() >= expire_time # datetime.now() >= expire_time 
         except Exception as ex:
             oadr3_log_error("failed calculating token expiration time", True)
 
@@ -207,7 +209,7 @@ class VTNOps():
             if response.status_code != 200:
                 oadr3_log_error(f"failed getting programs ...")
                 return None
-            programs = Programs(response.json())
+            programs = response.json() # Programs(response.json())
             return programs
         except Exception as ex:
             oadr3_log_critical(f"failed getting programs ....")
@@ -224,7 +226,7 @@ class VTNOps():
             if response.status_code != HTTPStatus.OK:
                 oadr3_log_error(f"failed getting program {program_id}")
                 return None
-            program = Program(response.json())
+            program = response.json() # Program(response.json())
             return program
         except Exception as ex:
             oadr3_log_critical(f"failed getting program ....")
@@ -243,7 +245,7 @@ class VTNOps():
         if response.status_code != HTTPStatus.CREATED:
             oadr3_log_error(f"failed creating reporet code = {response.status_code}")
             return None
-        return Program(response.json())
+        return response.json() # Program(response.json())
         
     def get_events(self, program_id:str=None):
         '''
@@ -258,12 +260,13 @@ class VTNOps():
             if response.status_code != HTTPStatus.OK:
                 oadr3_log_error(f"failed getting events ...")
                 return None
-            events = Events(response.json())
+            events = response.json() # Events(response.json())
             return events
         except Exception as ex:
             oadr3_log_critical(f"failed getting events ....")
             return None
 
+    ''' I don't think we need this for VENs
     def create_events(self, events:Events)->bool:
         try:
             if not events or len(events) == 0:
@@ -294,6 +297,7 @@ class VTNOps():
 
         except Exception as ex:
             return False
+    # '''
 
     def send_report(self, eventId:str, programId:str, ven:VEN, reportDescriptor:ReportPayloadDescriptor)->bool:
         if not ven or not programId or not reportDescriptor:

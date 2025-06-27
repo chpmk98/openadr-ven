@@ -6,7 +6,7 @@ import json
 
 # import socket
 # from zeroconf import ServiceInfo, Zeroconf, ServiceBrowser, ServiceStateChange
-# from oadr30.vtn import VTNOps
+from oadr30.vtn import VTNOps
 
 import time
 import machine
@@ -272,7 +272,8 @@ class ESP32VEN: #(ABC):
             # Once we've found a list of programs, we select the one we want.
             selected_ind = self._get_desired_program_index(program_list)
             self.program = program_list[selected_ind]
-            self.program_id = self.program.getId()
+            print("Looking at program {}".format(self.program))
+            self.program_id = self.program['id'] #.getId()
         print("Using Program ID: {}".format(self.program_id))
     
     # Gets the events for our desired program from the VTN and stores it in self.events.

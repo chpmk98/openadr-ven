@@ -29,13 +29,21 @@ print("Wi-Fi successfully connected!")
 
 ## Check to see if micropython-mdns libraries exist.
 import os
+import mip
 try:
     os.stat("/lib/mdns_client")
 except OSError:
     # Install micropython-mdns libraries if needed.
     print("Installing micropython-mdns..")
-    import mip
     mip.install("github:cbrand/micropython-mdns")
     print("micropython-mdns successfully installed!")
+
+## Check if other libraries exist.
+try:
+    import typing
+except ImportError:
+    print("Installing typing..")
+    mip.install("github:josverl/micropython-stubs/mip/typing.mpy")
+    print("typing successfully installed!")
 
 # I think that's all the setup we need!

@@ -3,7 +3,7 @@
 import json
 from .log import Oadr3LoggedException, oadr3_log_critical
 from .descriptors import EventPayloadDescriptor, ReportPayloadDescriptor
-from .interval import Interval
+# from .interval import Interval
 from .config import OADR3Config
 from .resource import Resource
 
