@@ -58,15 +58,24 @@ pip install adafruit-ampy
 
 8. Open `files_to_load/wifi_credentials.py` in a text editor, add your local Wi-Fi credentials, and save the file. If you are connected to Ethernet, I _think_ you can skip this step, but I have not tested using Ethernet so I cannot promise that the program will still work.
 
-9. Run `git update-index --skip-worktree files_to_load/wifi_credentials.py` from the root `openadr-ven` directory to avoid uploading your Wi-Fi credentials to GitHub.
+9. Run the following from the root `openadr-ven` directory to avoid uploading your Wi-Fi credentials to GitHub:
 
-10. Load program files onto the ESP32 by executing the `load_files.sh` bash script. On Mac, this is done by running `bash load_files.sh`.
+```
+git update-index --skip-worktree files_to_load/wifi_credentials.py
+```
+
+10. Load program files onto the ESP32 by executing the `load_files.sh` bash script. On Mac, this is done with:
+
+```
+bash load_files.sh
+```
+
    - This may require updating the permissions of the file, which can be done by running `chmod +rwx load_files.sh`.
    - This may take several minutes, but should probably finish within 10 minutes.
    - Individual files can be loaded with `ampy --port PORTNAME put SRC_FILE DST_FILE` (e.g., `ampy --port /dev/cu.wchusbserial1410 put files_to_load/oadr30/ven.py oadr30/ven.py`), and should take around 10-20 seconds each.
    - After files are already loaded onto the ESP32, any subsequent attempts at loading new or modified files must be accompanied by _holding down the `BUT1` button on the ESP32_. See Troubleshooting notes for more details.
 
-11. Download a serial terminal (I use CoolTerm, which can be downloaded [here](https://freeware.the-meiers.org/), but there are [other options](https://learn.sparkfun.com/tutorials/terminal-basics) available), open it, and connect to the ESP32 using the following connection details:
+11. Download a serial terminal (I use CoolTerm, which can be downloaded [here](https://freeware.the-meiers.org/), but there are [other terminal options](https://learn.sparkfun.com/tutorials/terminal-basics) available), open it, and connect to the ESP32 using the following connection details:
    - Speed: 115200 bits per second 
    - Data Bits: 8
    - Parity: None
@@ -111,7 +120,7 @@ To discover and connect to a VTN, you must now add a VTN to the local area netwo
 
 ## Troubleshooting notes
  - __The ESP32 must be in Read-Eval-Print Loop (REPL) mode when loading files with `ampy`,__ otherwise `ampy` will hang indefinitely. This is automatically true when only the firmware is installed, but after files are loaded, you must _hold the `BUT1` button_ when uploading new or modified files.
-   - `BUT1` is defined as the drop-to-REPL button in [line 59](https://github.com/chpmk98/openadr-ven/blob/0b13adaa8651e44b92f6b6e81f1c31589857387a/files_to_load/ven.py#L59) of `files_to_load/ven.py` and regularly polled throughout the program (e.g., while scanning for a VTN on the local area network;[line 229](https://github.com/chpmk98/openadr-ven/blob/0b13adaa8651e44b92f6b6e81f1c31589857387a/files_to_load/ven.py#L229) of `files_to_load/ven.py`)
+   - `BUT1` is defined as the drop-to-REPL button in [line 59](https://github.com/chpmk98/openadr-ven/blob/0b13adaa8651e44b92f6b6e81f1c31589857387a/files_to_load/ven.py#L59) of `files_to_load/ven.py` and regularly polled throughout the program (e.g., while scanning for a VTN on the local area network; [line 229](https://github.com/chpmk98/openadr-ven/blob/0b13adaa8651e44b92f6b6e81f1c31589857387a/files_to_load/ven.py#L229) of `files_to_load/ven.py`)
    - Modifications to the program should include places where the REPL button is polled and the program drops to REPL as needed, to allow `ampy` to upload files when reprogramming. Whether or not the program successfully drops to REPL can be confirmed by observing ESP32 output through the serial terminal.
    - If the ESP32 gets stuck in a state where it never drops to REPL, you can reprogram the ESP32 by using `esptool.py` to erase the entire flash, flash the firmware, and load in files again.
 
@@ -137,6 +146,7 @@ This VEN was tested with the OpenADR3 [VTN Reference Implementation](https://git
 ## Outstanding TODOs
 
 This branch is currently a rough proof-of-concept for service discovery and message passing over HTTPS on an ESP32 device. There are many poorly-written aspects of this code that should be changed, but I did not have the time to change them. The ones that I am aware of are listed below. 
+ - On Mac, `load_files.sh` loads `.DS_Store` files onto the ESP32, which is unnecessary. Updating the bash script to to filter out `.DS_Store` files could be useful.
  - There is no `datetime` module for MicroPython, so in `files_to_load/oadr30/vtn.py`, I replaced `datetime.now()` with `time.time()` and replaced `timedelta` with integer numbers of seconds. This should be functional, but I never set the `time` module, so `time.time()` returns some time in the year 2000, which is incorrect. Incorporating some way to grab the actual time and set the `time` module would be useful.
  - The `Event` class in `files_to_load/oadr30/events.py` relies heavily on the `IntervalPeriod` and `Intervals` classes in `files_to_load/oadr30/interval.py`, which relies on the `datetime` Python module and several other time-related libraries in the `ISO8601_DT` class in `datetime_util.py`. In a perfect world, someone would get all this time-keeping working and debugged in MicroPython, and thus have a functional `Events` class. I gave up and commented out lines in `files_to_load/oadr30/vtn.py` where `Events` was used to parse JSON packets received from the VTN, and instead save and display the raw JSON packets directly. Updating the code to parse JSON events more intelligently could be useful.
  - The `Programs` class does not work in `files_to_load/oadr30/vtn.py` for some reason -- `Program(response.json())` returns `None` when trying to parse JSON packets received from the VTN. I did not bother to troubleshoot this, and instead save and display the raw JSON packets directly. Updating the code to parse JSON programs more intelligently could be useful.

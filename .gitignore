@@ -1,3 +1,4 @@
 *.ipynb
 archive
 __pycache__
+.DS_Store
