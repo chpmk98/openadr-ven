@@ -31,7 +31,7 @@ Tested using Python 3.13.2.
 
 ### Local VTN Setup
 
-This VEN was tested with the OpenADR3 [VTN Reference Implementation](https://github.com/oadr3-org/openadr3-vtn-reference-implementation/tree/main) that was modified to advertise a service over mDNS, with the following fields:
+This VEN was tested with the OpenADR3 VTN Reference Implementation that was modified to advertise a service over mDNS, with the following fields:
 - service type: `_openadr-http._tcp.local.` \*
 - service name: `My VTN Server._openadr-http._tcp.local.`
 - server: `My-VTN-Server.local.`
